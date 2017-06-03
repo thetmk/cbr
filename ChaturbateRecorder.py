@@ -9,6 +9,8 @@ save_directory = "/Users/Joe/chaturbate"
 wishlist = "/Users/Joe/chaturbate/wanted.txt"
 #set the genders you want in a list format: ['female', 'male', 'couple', 'trans']
 genders = ['female', 'couple']
+interval = 20 #<----------- sets time between checks in seconds
+
 
 class TimeoutException(Exception): pass
 
@@ -23,6 +25,7 @@ def time_limit(seconds):
         yield
     finally:
         signal.alarm(0)
+
 
 class checkForModels:
     def getModels(self):
@@ -101,6 +104,11 @@ def startRecording(model):
 
 
 if __name__ == '__main__':
+    AllowedGenders = ['female', 'male', 'trans', 'couple']
+    for gender in genders:
+        if gender not in AllowedGenders:
+            print(gender, "is not in gender list, options are: female, male, trans, and couple - please correct")
+            exit()
     checker = checkForModels()
     print()
     sys.stdout.write("\033[F")
@@ -124,7 +132,7 @@ if __name__ == '__main__':
                         thread.start()
         f.close()
         sys.stdout.write("\033[F")
-        for i in range(20, 0, -1):
+        for i in range(interval, 0, -1):
             sys.stdout.write("\033[K")
             print("{} model(s) are being recorded. Next check in {} seconds".format(len(recording), i))
             sys.stdout.write("\033[K")
