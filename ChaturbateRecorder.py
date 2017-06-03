@@ -46,10 +46,10 @@ def getOnlineModels(args):
     gender = args[1]
     if page < lastPage[gender]:
         attempt = 1
-        while attempt <=3:
+        while attempt <= 3:
             with time_limit(8):
                 try:
-                    URL = "https://chaturbate.com/{gender}-cams/?page={page}".format(gender=gender, page=page)
+                    URL = "https://chaturbate.com/{gender}-cams/?page={page}".format(gender=gender.lower(), page=page)
                     result = urllib.request.urlopen(URL)
                     result = result.read()
                     soup = BeautifulSoup(result, 'lxml')
@@ -105,8 +105,9 @@ def startRecording(model):
 
 if __name__ == '__main__':
     AllowedGenders = ['female', 'male', 'trans', 'couple']
+    genders = [a.lower() for a in genders]
     for gender in genders:
-        if gender not in AllowedGenders:
+        if gender.lower() not in AllowedGenders:
             print(gender, "is not in gender list, options are: female, male, trans, and couple - please correct")
             exit()
     checker = checkForModels()
@@ -117,8 +118,7 @@ if __name__ == '__main__':
         print("{} model(s) are being recorded. Getting list of online models now".format(len(recording)))
         sys.stdout.write("\033[K")
         print("the following models are being recorded: {}".format(recording), end="\r")
-        #sys.stdout.write("\033[F")
-        lastPage = {'female': 100, 'couple': 100}
+        lastPage = {'female': 100, 'couple': 100, 'trans': 100, 'male': 100}
         online = []
         online = checker.getModels()
         online = [ent for sublist in online for ent in sublist]
