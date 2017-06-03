@@ -42,7 +42,8 @@ def getOnlineModels(args):
     page = args[0]
     gender = args[1]
     if page < lastPage[gender]:
-        while True:
+        attempt = 1
+        while attempt <=3:
             with time_limit(8):
                 try:
                     URL = "https://chaturbate.com/{gender}-cams/?page={page}".format(gender=gender, page=page)
@@ -57,8 +58,8 @@ def getOnlineModels(args):
                         for model in models:
                             MODELS.append(model.find_all('a', href=True)[0].string.lower()[1:])
                     break
-                except:
-                    pass
+                except TimeoutException:
+                    attempt = attempt + 1
     return MODELS
 
 def startRecording(model):
@@ -123,7 +124,7 @@ if __name__ == '__main__':
                         thread.start()
         f.close()
         sys.stdout.write("\033[F")
-        for i in range(5, 0, -1):
+        for i in range(20, 0, -1):
             sys.stdout.write("\033[K")
             print("{} model(s) are being recorded. Next check in {} seconds".format(len(recording), i))
             sys.stdout.write("\033[K")
