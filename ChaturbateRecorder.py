@@ -1,15 +1,14 @@
-import urllib.request, time, datetime, os, threading, sys, multiprocessing, signal
+import urllib.request, time, datetime, os, threading, sys, multiprocessing, signal, requests, configparser, re
 from bs4 import BeautifulSoup
 from contextlib import contextmanager
 from livestreamer import Livestreamer
 
-#specify path to save to ie "/Users/Joe/chaturbate"
-save_directory = "/Users/Joe/chaturbate"
-#specify the path to the wishlist file ie "/Users/Joe/chaturbate/wanted.txt"
-wishlist = "/Users/Joe/chaturbate/wanted.txt"
-#set the genders you want in a list format: ['female', 'male', 'couple', 'trans']
-genders = ['female', 'couple']
-interval = 20 #<----------- sets time between checks in seconds
+Config = configparser.ConfigParser()
+Config.read(sys.path[0] + "/config.conf")
+save_directory = Config.get('paths', 'save_directory')
+wishlist = Config.get('paths', 'wishlist')
+interval = int(Config.get('settings', 'checkInterval'))
+genders = re.sub(' ', '', Config.get('settings', 'genders')).split(",")
 
 
 class TimeoutException(Exception): pass
@@ -50,8 +49,8 @@ def getOnlineModels(args):
             with time_limit(8):
                 try:
                     URL = "https://chaturbate.com/{gender}-cams/?page={page}".format(gender=gender.lower(), page=page)
-                    result = urllib.request.urlopen(URL)
-                    result = result.read()
+                    result = requests.request('GET', URL)
+                    result = result.text
                     soup = BeautifulSoup(result, 'lxml')
                     if lastPage[gender] == 100:
                         lastPage[gender] = int(soup.findAll('a', {'class': 'endless_page_link'})[-2].string)
@@ -108,7 +107,7 @@ if __name__ == '__main__':
     genders = [a.lower() for a in genders]
     for gender in genders:
         if gender.lower() not in AllowedGenders:
-            print(gender, "is not in gender list, options are: female, male, trans, and couple - please correct")
+            print(gender, "is not an acceptable gender, options are: female, male, trans, and couple - please correct your config file")
             exit()
     checker = checkForModels()
     print()
