@@ -1,5 +1,4 @@
-import urllib.request, time, datetime, os, threading, sys, requests, configparser, re, gevent
-from bs4 import BeautifulSoup
+import time, datetime, os, threading, sys, requests, configparser, re, subprocess
 from livestreamer import Livestreamer
 from threading import Thread
 from queue import Queue
@@ -12,77 +11,23 @@ interval = int(Config.get('settings', 'checkInterval'))
 genders = re.sub(' ', '', Config.get('settings', 'genders')).split(",")
 lastPage = {'female': 100, 'couple': 100, 'trans': 100, 'male': 100}
 
-online = []
 q = Queue()
-online = []
-
-class checkForModels:
-    global q
-    global online
-    def getModels(self):
-        workers = []
-        for gender in genders:
-            if gender is 'couple':
-                for i in range(1, 3):
-                    q.put([i, gender])
-            else:
-                for i in range(1, 30):
-                    q.put([i, gender])
-        while not q.empty():
-            for i in range(10):
-                t = Thread(target=getOnlineModels)
-                workers.append(t)
-                t.start()
-            for t in workers:
-                t.join()
 
 
 recording = []
-def getOnlineModels():
-    global lastPage
-    global q
-    global online
-    if not q.empty():
-        args = q.get()
-        page = args[0]
-        gender = args[1]
-        if page < lastPage[gender]:
-            attempt = 1
-            while attempt <= 3:
-                try:
-                    timeout = gevent.Timeout(8)
-                    timeout.start()
-                    URL = "https://chaturbate.com/{gender}-cams/?page={page}".format(gender=gender.lower(), page=page)
-                    result = requests.request('GET', URL)
-                    result = result.text
-                    soup = BeautifulSoup(result, 'lxml')
-                    if lastPage[gender] == 100:
-                        lastPage[gender] = int(soup.findAll('a', {'class': 'endless_page_link'})[-2].string)
-                    if int(soup.findAll('li', {'class': 'active'})[1].string) == page:
-                        LIST = soup.findAll('ul', {'class': 'list'})[0]
-                        models = LIST.find_all('div', {'class': 'title'})
-                        for model in models:
-                            online.append(model.find_all('a', href=True)[0].string.lower()[1:])
-                    break
-                except gevent.Timeout:
-                    attempt = attempt + 1
-                    if attempt > 3:
-                        break
-
 
 def startRecording(model):
     try:
         URL = "https://chaturbate.com/{}/".format(model)
-        result = urllib.request.urlopen(URL)
-        result = result.read().decode()
+        result = requests.get(URL, headers={'Connection':'close'})
+        result = result.text
         for line in result.splitlines():
             if "m3u8" in line:
                 stream = line.split("'")[1]
                 break
         session = Livestreamer()
         session.set_option('http-headers', "referer=https://www.chaturbate.com/{}".format(model))
-        streams = session.streams("hlsvariant://{}"
-          .format(stream))
+        streams = session.streams("hlsvariant://{}".format(stream))
         stream = streams["best"]
         fd = stream.open()
         ts = time.time()
@@ -115,7 +60,6 @@ if __name__ == '__main__':
         if gender.lower() not in AllowedGenders:
             print(gender, "is not an acceptable gender, options are: female, male, trans, and couple - please correct your config file")
             exit()
-    checker = checkForModels()
     print()
     sys.stdout.write("\033[F")
     while True:
@@ -124,16 +68,14 @@ if __name__ == '__main__':
         sys.stdout.write("\033[K")
         print("the following models are being recorded: {}".format(recording), end="\r")
         lastPage = {'female': 100, 'couple': 100, 'trans': 100, 'male': 100}
-        online = []
-        checker.getModels()
-        online = list(set(online))
-        with open(wishlist) as f:
-            for model in f:
-                models = model.split()
-                for theModel in models:
-                    if theModel.lower() in online and theModel.lower() not in recording:
-                        thread = threading.Thread(target=startRecording, args=(theModel.lower(),))
-                        thread.start()
+        online = subprocess.check_output([sys.executable, sys.path[0] + "/getModels.py"])
+        f = open(wishlist, 'r')
+        for theModel in f.readlines():
+            theModel = list(filter(None, theModel.split('/')))[-1]
+            if bytes(theModel.lower(), 'utf-8') in online\
+                    and theModel.lower().strip() not in recording:
+                thread = threading.Thread(target=startRecording, args=(theModel.lower().strip(),))
+                thread.start()
         f.close()
         sys.stdout.write("\033[F")
         for i in range(interval, 0, -1):
@@ -143,3 +85,4 @@ if __name__ == '__main__':
             print("the following models are being recorded: {}".format(recording), end="\r")
             time.sleep(1)
             sys.stdout.write("\033[F")
+
