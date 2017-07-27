@@ -1,7 +1,7 @@
-import time, datetime, os, threading, sys, requests, configparser, re, subprocess
+import time, datetime, os, sys, requests, configparser, re, subprocess
 from livestreamer import Livestreamer
 from threading import Thread
-from queue import Queue
+from bs4 import BeautifulSoup
 
 Config = configparser.ConfigParser()
 Config.read(sys.path[0] + "/config.conf")
@@ -10,14 +10,14 @@ wishlist = Config.get('paths', 'wishlist')
 interval = int(Config.get('settings', 'checkInterval'))
 genders = re.sub(' ', '', Config.get('settings', 'genders')).split(",")
 lastPage = {'female': 100, 'couple': 100, 'trans': 100, 'male': 100}
-
-q = Queue()
+directory_structure = Config.get('paths', 'directory_structure').lower()
 
 
 recording = []
 
 def startRecording(model):
     try:
+        gender = ""
         URL = "https://chaturbate.com/{}/".format(model)
         result = requests.get(URL, headers={'Connection':'close'})
         result = result.text
@@ -25,17 +25,29 @@ def startRecording(model):
             if "m3u8" in line:
                 stream = line.split("'")[1]
                 break
+        soup = BeautifulSoup(result, 'lxml')
+        soup = soup.find('div', {'id': "tabs_content_container"})
+        soup = soup.find('dl')
+        for line in str(soup).splitlines():
+            if "<dt>Sex:</dt>" in line:
+                gender = re.sub("<dt>Sex:</dt><dd>", "", line)[:-5]
+                break
         session = Livestreamer()
         session.set_option('http-headers', "referer=https://www.chaturbate.com/{}".format(model))
         streams = session.streams("hlsvariant://{}".format(stream))
         stream = streams["best"]
         fd = stream.open()
-        ts = time.time()
-        st = datetime.datetime.fromtimestamp(ts).strftime("%Y.%m.%d_%H.%M.%S")
-        if not os.path.exists("{path}/{model}".format(path=save_directory, model=model)):
-            os.makedirs("{path}/{model}".format(path=save_directory, model=model))
-        with open("{path}/{model}/{st}_{model}.mp4".format(path=save_directory, model=model,
-                                                           st=st), 'wb') as f:
+        now = datetime.datetime.now()
+        if not os.path.exists(
+                directory_structure.format(path=save_directory, model=model, gender=gender, seconds=now.strftime("%S"),
+                                           minutes=now.strftime("%M"), hour=now.strftime("%H"), day=now.strftime("%d"),
+                                           month=now.strftime("%m"), year=now.strftime("%Y")).rsplit('/', 1)[0]):
+            os.makedirs(directory_structure.format(path=save_directory, model=model, gender=gender, seconds=now.strftime("%S"),
+                                           minutes=now.strftime("%M"), hour=now.strftime("%H"), day=now.strftime("%d"),
+                                           month=now.strftime("%m"), year=now.strftime("%Y")).rsplit('/', 1)[0])
+        with open(directory_structure.format(path=save_directory, model=model, gender=gender, seconds=now.strftime("%S"),
+                                           minutes=now.strftime("%M"), hour=now.strftime("%H"), day=now.strftime("%d"),
+                                           month=now.strftime("%m"), year=now.strftime("%Y")), 'wb') as f:
             recording.append(model)
             while True:
                 try:
@@ -74,7 +86,7 @@ if __name__ == '__main__':
             theModel = list(filter(None, theModel.split('/')))[-1]
             if bytes(theModel.lower(), 'utf-8') in online\
                     and theModel.lower().strip() not in recording:
-                thread = threading.Thread(target=startRecording, args=(theModel.lower().strip(),))
+                thread = Thread(target=startRecording, args=(theModel.lower().strip(),))
                 thread.start()
         f.close()
         sys.stdout.write("\033[F")
