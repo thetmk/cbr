@@ -1,4 +1,4 @@
-import time, datetime, os, sys, requests, configparser, re, subprocess
+import time, datetime, os, sys, requests, configparser, re, subprocess, logging
 from livestreamer import Livestreamer
 from threading import Thread
 from bs4 import BeautifulSoup
@@ -79,14 +79,14 @@ if __name__ == '__main__':
         print("{} model(s) are being recorded. Getting list of online models now".format(len(recording)))
         sys.stdout.write("\033[K")
         print("the following models are being recorded: {}".format(recording), end="\r")
-        lastPage = {'female': 100, 'couple': 100, 'trans': 100, 'male': 100}
         online = subprocess.check_output([sys.executable, sys.path[0] + "/getModels.py"])
+        online = online.decode('utf-8').splitlines()
         f = open(wishlist, 'r')
         for theModel in f.readlines():
-            theModel = list(filter(None, theModel.split('/')))[-1]
-            if bytes(theModel.lower(), 'utf-8') in online\
-                    and theModel.lower().strip() not in recording:
-                thread = Thread(target=startRecording, args=(theModel.lower().strip(),))
+            theModel = list(filter(None, theModel.split('/')))[-1].lower().strip()
+            if theModel in online\
+                    and theModel not in recording:
+                thread = Thread(target=startRecording, args=(theModel,))
                 thread.start()
         f.close()
         sys.stdout.write("\033[F")
@@ -97,4 +97,3 @@ if __name__ == '__main__':
             print("the following models are being recorded: {}".format(recording), end="\r")
             time.sleep(1)
             sys.stdout.write("\033[F")
-
