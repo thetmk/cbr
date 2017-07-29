@@ -51,7 +51,7 @@ def startRecording(model):
                                               minutes=now.strftime("%M"), hour=now.strftime("%H"),
                                               day=now.strftime("%d"),
                                               month=now.strftime("%m"), year=now.strftime("%Y"))
-        directory = filePath.rsplit('/', 1)[0]
+        directory = filePath.rsplit('/', 1)[0]+'/'
         if not os.path.exists(directory):
             os.makedirs(directory)
         with open(filePath, 'wb') as f:
@@ -74,7 +74,7 @@ def startRecording(model):
 
                         if not os.path.exists(finishedDir):
                             os.makedirs(finishedDir)
-                        os.rename(filePath, finishedDir+filePath.rsplit['/',1][0])
+                        os.rename(filePath, finishedDir+'/'+filePath.rsplit['/',1][0])
                     return
 
         if model in recording:
@@ -93,7 +93,7 @@ def postProcess():
         path = parameters['path']
         filename = path.rsplit('/', 1)[1]
         gender = parameters['gender']
-        directory = path.rsplit('/', 1)[0]
+        directory = path.rsplit('/', 1)[0]+'/'
         subprocess.run(postProcessingCommand.split() + [path, filename, directory, model, gender])
 
 
