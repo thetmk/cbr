@@ -108,7 +108,7 @@ if __name__ == '__main__':
     if postProcessingCommand != "":
         processingQueue = Queue()
         postprocessingWorkers = []
-        for i in range(1, postProcessingThreads):
+        for i in range(0, postProcessingThreads):
             t = Thread(target=postProcess)
             postprocessingWorkers.append(t)
             t.start()
