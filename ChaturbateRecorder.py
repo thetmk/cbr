@@ -1,4 +1,5 @@
-import time, datetime, os, sys, requests, configparser, re, subprocess, logging
+import time, datetime, os, sys, requests, configparser, re, subprocess
+from queue import Queue
 from livestreamer import Livestreamer
 from threading import Thread
 from bs4 import BeautifulSoup
@@ -9,13 +10,20 @@ save_directory = Config.get('paths', 'save_directory')
 wishlist = Config.get('paths', 'wishlist')
 interval = int(Config.get('settings', 'checkInterval'))
 genders = re.sub(' ', '', Config.get('settings', 'genders')).split(",")
-lastPage = {'female': 100, 'couple': 100, 'trans': 100, 'male': 100}
 directory_structure = Config.get('paths', 'directory_structure').lower()
+postProcessingCommand = Config.get('settings', 'postProcessingCommand')
+try:
+    postProcessingThreads = int(Config.get('settings', 'postProcessingThreads'))
+except ValueError:
+    pass
+completed_directory = Config.get('paths', 'completed_directory').lower()
 
 
 recording = []
 
 def startRecording(model):
+    global postProcessingCommand
+    global processingQueue
     try:
         gender = ""
         URL = "https://chaturbate.com/{}/".format(model)
@@ -38,16 +46,15 @@ def startRecording(model):
         stream = streams["best"]
         fd = stream.open()
         now = datetime.datetime.now()
-        if not os.path.exists(
-                directory_structure.format(path=save_directory, model=model, gender=gender, seconds=now.strftime("%S"),
-                                           minutes=now.strftime("%M"), hour=now.strftime("%H"), day=now.strftime("%d"),
-                                           month=now.strftime("%m"), year=now.strftime("%Y")).rsplit('/', 1)[0]):
-            os.makedirs(directory_structure.format(path=save_directory, model=model, gender=gender, seconds=now.strftime("%S"),
-                                           minutes=now.strftime("%M"), hour=now.strftime("%H"), day=now.strftime("%d"),
-                                           month=now.strftime("%m"), year=now.strftime("%Y")).rsplit('/', 1)[0])
-        with open(directory_structure.format(path=save_directory, model=model, gender=gender, seconds=now.strftime("%S"),
-                                           minutes=now.strftime("%M"), hour=now.strftime("%H"), day=now.strftime("%d"),
-                                           month=now.strftime("%m"), year=now.strftime("%Y")), 'wb') as f:
+        filePath = directory_structure.format(path=save_directory, model=model, gender=gender,
+                                              seconds=now.strftime("%S"),
+                                              minutes=now.strftime("%M"), hour=now.strftime("%H"),
+                                              day=now.strftime("%d"),
+                                              month=now.strftime("%m"), year=now.strftime("%Y"))
+        directory = filePath.rsplit('/', 1)[0]
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+        with open(filePath, 'wb') as f:
             recording.append(model)
             while True:
                 try:
@@ -56,6 +63,18 @@ def startRecording(model):
                 except:
                     f.close()
                     recording.remove(model)
+                    if postProcessingCommand != "":
+                        processingQueue.put({'model':model, 'path':filePath, 'gender':gender})
+                    elif completed_directory != "":
+                        finishedDir = completed_directory.format(path=save_directory, model=model,
+                                                                 gender=gender, seconds=now.strftime("%S"),
+                                                                 minutes=now.strftime("%M"),
+                                                                 hour=now.strftime("%H"), day=now.strftime("%d"),
+                                                                 month=now.strftime("%m"), year=now.strftime("%Y"))
+
+                        if not os.path.exists(finishedDir):
+                            os.makedirs(finishedDir)
+                        os.rename(filePath, finishedDir+filePath.rsplit['/',1][0])
                     return
 
         if model in recording:
@@ -63,6 +82,19 @@ def startRecording(model):
     except:
         if model in recording:
             recording.remove(model)
+def postProcess():
+    global processingQueue
+    global postProcessingCommand
+    while True:
+        while processingQueue.empty():
+            time.sleep(1)
+        parameters = processingQueue.get()
+        model = parameters['model']
+        path = parameters['path']
+        filename = path.rsplit('/', 1)[1]
+        gender = parameters['gender']
+        directory = path.rsplit('/', 1)[0]
+        subprocess.run(postProcessingCommand.split() + [path, filename, directory, model, gender])
 
 
 if __name__ == '__main__':
@@ -73,6 +105,13 @@ if __name__ == '__main__':
             print(gender, "is not an acceptable gender, options are: female, male, trans, and couple - please correct your config file")
             exit()
     print()
+    if postProcessingCommand != "":
+        processingQueue = Queue()
+        postprocessingWorkers = []
+        for i in range(1, postProcessingThreads):
+            t = Thread(target=postProcess)
+            postprocessingWorkers.append(t)
+            t.start()
     sys.stdout.write("\033[F")
     while True:
         sys.stdout.write("\033[K")
@@ -82,7 +121,7 @@ if __name__ == '__main__':
         online = subprocess.check_output([sys.executable, sys.path[0] + "/getModels.py"])
         online = online.decode('utf-8').splitlines()
         f = open(wishlist, 'r')
-        for theModel in f.readlines():
+        for theModel in list(set(f.readlines())):
             theModel = list(filter(None, theModel.split('/')))[-1].lower().strip()
             if theModel in online\
                     and theModel not in recording:
