@@ -122,7 +122,7 @@ if __name__ == '__main__':
         online = online.decode('utf-8').splitlines()
         f = open(wishlist, 'r')
         for theModel in list(set(f.readlines())):
-            theModel = list(filter(None, theModel.split('/')))[-1].lower().strip()
+            theModel = list(filter(None, theModel.split('chaturbate.com/')))[-1].lower().strip().replace('/', '')
             if theModel in online\
                     and theModel not in recording:
                 thread = Thread(target=startRecording, args=(theModel,))
