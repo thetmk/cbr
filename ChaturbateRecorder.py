@@ -1,8 +1,7 @@
-import time, datetime, os, sys, requests, configparser, re, subprocess
+import time, datetime, os, sys, requests, configparser, re, subprocess, json
 from queue import Queue
 from livestreamer import Livestreamer
 from threading import Thread
-from bs4 import BeautifulSoup
 
 Config = configparser.ConfigParser()
 Config.read(sys.path[0] + "/config.conf")
@@ -25,28 +24,15 @@ def startRecording(model):
     global postProcessingCommand
     global processingQueue
     try:
-        gender = ""
-        URL = "https://chaturbate.com/{}/".format(model)
-        result = requests.get(URL, headers={'Connection':'close'})
-        result = result.text
-        for line in result.splitlines():
-            if "m3u8" in line:
-                stream = line.split("'")[1]
-                break
-        soup = BeautifulSoup(result, 'lxml')
-        soup = soup.find('div', {'id': "tabs_content_container"})
-        soup = soup.find('dl')
-        for line in str(soup).splitlines():
-            if "<dt>Sex:</dt>" in line:
-                gender = re.sub("<dt>Sex:</dt><dd>", "", line)[:-5]
-                break
+        result = requests.get('https://chaturbate.com/api/chatvideocontext/{}/'.format(model)).text
+        result = json.loads(result)
         session = Livestreamer()
         session.set_option('http-headers', "referer=https://www.chaturbate.com/{}".format(model))
-        streams = session.streams("hlsvariant://{}".format(stream))
+        streams = session.streams("hlsvariant://{}".format(result['hls_source'].rsplit('?')[0]))
         stream = streams["best"]
         fd = stream.open()
         now = datetime.datetime.now()
-        filePath = directory_structure.format(path=save_directory, model=model, gender=gender,
+        filePath = directory_structure.format(path=save_directory, model=model, gender=result['broadcaster_gender'],
                                               seconds=now.strftime("%S"),
                                               minutes=now.strftime("%M"), hour=now.strftime("%H"),
                                               day=now.strftime("%d"),
@@ -96,14 +82,42 @@ def postProcess():
         directory = path.rsplit('/', 1)[0]+'/'
         subprocess.run(postProcessingCommand.split() + [path, filename, directory, model, gender])
 
+def getOnlineModels():
+    online = []
+    genders = ['c', 'f']
+    for gender in genders:
+        try:
+            data = {'categories': gender, 'num': 127}
+            result = requests.post("https://roomlister.stream.highwebmedia.com/session/start/", data=data).text
+
+            result = json.loads(result)
+            length = len(result['rooms'])
+            online.extend([m['username'] for m in result['rooms']])
+            data['key'] = result['key']
+            while length == 127:
+                result = requests.post("https://roomlister.stream.highwebmedia.com/session/next/", data=data).text
+                result = json.loads(result)
+                length = len(result['rooms'])
+                data['key'] = result['key']
+                online.extend([m['username'] for m in result['rooms']])
+        except json.decoder.JSONDecodeError:
+            break
+    f = open(wishlist, 'r')
+    wanted =  list(set(f.readlines()))
+    wanted = [m.strip('\n').split('chaturbate.com/')[-1].lower().strip().replace('/', '') for m in wanted]
+    for theModel in list(set(list(set(wanted).intersection(online))).difference(recording)):
+            thread = Thread(target=startRecording, args=(theModel,))
+            thread.start()
+    f.close()
+
 
 if __name__ == '__main__':
     AllowedGenders = ['female', 'male', 'trans', 'couple']
-    genders = [a.lower() for a in genders]
     for gender in genders:
         if gender.lower() not in AllowedGenders:
             print(gender, "is not an acceptable gender, options are: female, male, trans, and couple - please correct your config file")
             exit()
+    genders = [a.lower()[0] for a in genders]
     print()
     if postProcessingCommand != "":
         processingQueue = Queue()
@@ -118,16 +132,7 @@ if __name__ == '__main__':
         print("{} model(s) are being recorded. Getting list of online models now".format(len(recording)))
         sys.stdout.write("\033[K")
         print("the following models are being recorded: {}".format(recording), end="\r")
-        online = subprocess.check_output([sys.executable, sys.path[0] + "/getModels.py"])
-        online = online.decode('utf-8').splitlines()
-        f = open(wishlist, 'r')
-        for theModel in list(set(f.readlines())):
-            theModel = list(filter(None, theModel.split('chaturbate.com/')))[-1].lower().strip().replace('/', '')
-            if theModel in online\
-                    and theModel not in recording:
-                thread = Thread(target=startRecording, args=(theModel,))
-                thread.start()
-        f.close()
+        getOnlineModels()
         sys.stdout.write("\033[F")
         for i in range(interval, 0, -1):
             sys.stdout.write("\033[K")
