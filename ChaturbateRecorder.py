@@ -84,7 +84,6 @@ def postProcess():
 
 def getOnlineModels():
     online = []
-    genders = ['c', 'f']
     for gender in genders:
         try:
             data = {'categories': gender, 'num': 127}
