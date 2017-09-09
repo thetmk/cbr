@@ -22,6 +22,8 @@ except ValueError:
     pass
 completed_directory = Config.get('paths', 'completed_directory').lower()
 
+def now():
+    return '[' + datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ']'
 
 recording = []
 
@@ -134,14 +136,14 @@ if __name__ == '__main__':
     sys.stdout.write("\033[F")
     while True:
         sys.stdout.write("\033[K")
-        print("{} model(s) are being recorded. Getting list of online models now".format(len(recording)))
+        print( now(),"{} model(s) are being recorded. Getting list of online models now".format(len(recording)))
         sys.stdout.write("\033[K")
         print("the following models are being recorded: {}".format(recording), end="\r")
         getOnlineModels()
         sys.stdout.write("\033[F")
         for i in range(interval, 0, -1):
             sys.stdout.write("\033[K")
-            print("{} model(s) are being recorded. Next check in {} seconds".format(len(recording), i))
+            print(now(), "{} model(s) are being recorded. Next check in {} seconds".format(len(recording), i))
             sys.stdout.write("\033[K")
             print("the following models are being recorded: {}".format(recording), end="\r")
             time.sleep(1)
