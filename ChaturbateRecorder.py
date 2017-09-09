@@ -1,4 +1,9 @@
 import time, datetime, os, sys, requests, configparser, re, subprocess, json
+if os.name == 'nt':
+    import ctypes
+
+    kernel32 = ctypes.windll.kernel32
+    kernel32.SetConsoleMode(kernel32.GetStdHandle(-11), 7)
 from queue import Queue
 from livestreamer import Livestreamer
 from threading import Thread
@@ -101,6 +106,7 @@ def getOnlineModels():
                 online.extend([m['username'] for m in result['rooms']])
         except json.decoder.JSONDecodeError:
             break
+        except requests.exceptions.ConnectionError:pass
     f = open(wishlist, 'r')
     wanted =  list(set(f.readlines()))
     wanted = [m.strip('\n').split('chaturbate.com/')[-1].lower().strip().replace('/', '') for m in wanted]
