@@ -26,55 +26,55 @@ def now():
     return '[' + datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ']'
 
 recording = []
+wanted = []
 
 def startRecording(model):
     global postProcessingCommand
     global processingQueue
-    try:
-        result = requests.get('https://chaturbate.com/api/chatvideocontext/{}/'.format(model)).text
-        result = json.loads(result)
-        session = Livestreamer()
-        session.set_option('http-headers', "referer=https://www.chaturbate.com/{}".format(model))
-        streams = session.streams("hlsvariant://{}".format(result['hls_source'].rsplit('?')[0]))
-        stream = streams["best"]
-        fd = stream.open()
-        now = datetime.datetime.now()
-        filePath = directory_structure.format(path=save_directory, model=model, gender=result['broadcaster_gender'],
-                                              seconds=now.strftime("%S"),
-                                              minutes=now.strftime("%M"), hour=now.strftime("%H"),
-                                              day=now.strftime("%d"),
-                                              month=now.strftime("%m"), year=now.strftime("%Y"))
-        directory = filePath.rsplit('/', 1)[0]+'/'
-        if not os.path.exists(directory):
-            os.makedirs(directory)
-        with open(filePath, 'wb') as f:
-            recording.append(model)
-            while True:
-                try:
-                    data = fd.read(1024)
-                    f.write(data)
-                except:
-                    f.close()
-                    recording.remove(model)
-                    if postProcessingCommand != "":
-                        processingQueue.put({'model':model, 'path':filePath, 'gender':gender})
-                    elif completed_directory != "":
-                        finishedDir = completed_directory.format(path=save_directory, model=model,
-                                                                 gender=gender, seconds=now.strftime("%S"),
-                                                                 minutes=now.strftime("%M"),
-                                                                 hour=now.strftime("%H"), day=now.strftime("%d"),
-                                                                 month=now.strftime("%m"), year=now.strftime("%Y"))
+    #try:
+    result = requests.get('https://chaturbate.com/api/chatvideocontext/{}/'.format(model)).json()
+    session = Livestreamer()
+    session.set_option('http-headers', "referer=https://www.chaturbate.com/{}".format(model))
+    streams = session.streams("hlsvariant://{}".format(result['hls_source'].rsplit('?')[0]))
+    stream = streams["best"]
+    fd = stream.open()
+    now = datetime.datetime.now()
+    filePath = directory_structure.format(path=save_directory, model=model, gender=result['broadcaster_gender'],
+                                          seconds=now.strftime("%S"),
+                                          minutes=now.strftime("%M"), hour=now.strftime("%H"),
+                                          day=now.strftime("%d"),
+                                          month=now.strftime("%m"), year=now.strftime("%Y"))
+    directory = filePath.rsplit('/', 1)[0]+'/'
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+    with open(filePath, 'wb') as f:
+        recording.append(model)
+        while model in wanted:
+            try:
+                data = fd.read(1024)
+                f.write(data)
+            except:
+                f.close()
+                recording.remove(model)
+                if postProcessingCommand != "":
+                    processingQueue.put({'model':model, 'path':filePath, 'gender':gender})
+                elif completed_directory != "":
+                    finishedDir = completed_directory.format(path=save_directory, model=model,
+                                                             gender=gender, seconds=now.strftime("%S"),
+                                                             minutes=now.strftime("%M"),
+                                                             hour=now.strftime("%H"), day=now.strftime("%d"),
+                                                             month=now.strftime("%m"), year=now.strftime("%Y"))
 
-                        if not os.path.exists(finishedDir):
-                            os.makedirs(finishedDir)
-                        os.rename(filePath, finishedDir+'/'+filePath.rsplit['/',1][0])
-                    return
+                    if not os.path.exists(finishedDir):
+                        os.makedirs(finishedDir)
+                    os.rename(filePath, finishedDir+'/'+filePath.rsplit['/',1][0])
+                return
 
-        if model in recording:
-            recording.remove(model)
-    except:
-        if model in recording:
-            recording.remove(model)
+    if model in recording:
+        recording.remove(model)
+    #except:
+     #   if model in recording:
+      #      recording.remove(model)
 def postProcess():
     global processingQueue
     global postProcessingCommand
@@ -91,6 +91,7 @@ def postProcess():
 
 def getOnlineModels():
     online = []
+    global wanted
     for gender in genders:
         try:
             data = {'categories': gender, 'num': 127}
@@ -110,9 +111,11 @@ def getOnlineModels():
             break
         except requests.exceptions.ConnectionError:pass
     f = open(wishlist, 'r')
-    wanted =  list(set(f.readlines()))
-    wanted = [m.strip('\n').split('chaturbate.com/')[-1].lower().strip().replace('/', '') for m in wanted]
-    for theModel in list(set(list(set(wanted).intersection(online))).difference(recording)):
+    wantedModels =  list(set(f.readlines()))
+    wanted = [m.strip('\n').split('chaturbate.com/')[-1].lower().strip().replace('/', '') for m in wantedModels]
+    del wantedModels
+    wanted = list(set(wanted).intersection(online).difference(recording))
+    for theModel in wanted:
             thread = Thread(target=startRecording, args=(theModel,))
             thread.start()
     f.close()
