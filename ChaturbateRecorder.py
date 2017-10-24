@@ -1,7 +1,6 @@
 import time, datetime, os, sys, requests, configparser, re, subprocess, json
 if os.name == 'nt':
     import ctypes
-
     kernel32 = ctypes.windll.kernel32
     kernel32.SetConsoleMode(kernel32.GetStdHandle(-11), 7)
 from queue import Queue
@@ -68,6 +67,7 @@ def startRecording(model):
                 if not os.path.exists(finishedDir):
                     os.makedirs(finishedDir)
                 os.rename(filePath, finishedDir+'/'+filePath.rsplit['/',1][0])
+    excetp AttributeError:pass
     finally:
         if model in recording:
             recording.remove(model)
