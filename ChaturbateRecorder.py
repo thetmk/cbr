@@ -67,7 +67,7 @@ def startRecording(model):
                 if not os.path.exists(finishedDir):
                     os.makedirs(finishedDir)
                 os.rename(filePath, finishedDir+'/'+filePath.rsplit['/',1][0])
-    except [OSError, requests.exceptions.HTTPError, livestreamer.exceptions.PluginError, AttributeError]: pass
+    except: pass
     finally:
         if model in recording:
             recording.remove(model)
