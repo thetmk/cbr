@@ -1,4 +1,4 @@
-import time, datetime, os, sys, requests, configparser, re, subprocess, json
+import time, datetime, os, sys, requests, configparser, re, subprocess
 if os.name == 'nt':
     import ctypes
     kernel32 = ctypes.windll.kernel32
@@ -90,21 +90,17 @@ def getOnlineModels():
     for gender in genders:
         try:
             data = {'categories': gender, 'num': 127}
-            result = requests.post("https://roomlister.stream.highwebmedia.com/session/start/", data=data).text
-
-            result = json.loads(result)
+            result = requests.post("https://roomlister.stream.highwebmedia.com/session/start/", data=data).json()
             length = len(result['rooms'])
-            online.extend([m['username'] for m in result['rooms']])
+            online.extend([m['username'].lower() for m in result['rooms']])
             data['key'] = result['key']
             while length == 127:
-                result = requests.post("https://roomlister.stream.highwebmedia.com/session/next/", data=data).text
-                result = json.loads(result)
+                result = requests.post("https://roomlister.stream.highwebmedia.com/session/next/", data=data).json()
                 length = len(result['rooms'])
                 data['key'] = result['key']
                 online.extend([m['username'].lower() for m in result['rooms']])
-        except json.decoder.JSONDecodeError:
+        except:
             break
-        except requests.exceptions.ConnectionError:pass
     f = open(wishlist, 'r')
     wanted =  list(set(f.readlines()))
     wanted = [m.strip('\n').split('chaturbate.com/')[-1].lower().strip().replace('/', '') for m in wanted]
