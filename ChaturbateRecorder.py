@@ -104,7 +104,9 @@ def getOnlineModels():
     f = open(wishlist, 'r')
     wanted =  list(set(f.readlines()))
     wanted = [m.strip('\n').split('chaturbate.com/')[-1].lower().strip().replace('/', '') for m in wanted]
-    wantedModels = list(set(wanted).intersection(online).difference(recording))
+    #wantedModels = list(set(wanted).intersection(online).difference(recording))
+    '''new method for building list - testing issue #19 yet again'''
+    wantedModels = [m for m in (list(set(wanted))) if m in online and m not in recording]
     for theModel in wantedModels:
             thread = Thread(target=startRecording, args=(theModel,))
             thread.start()
