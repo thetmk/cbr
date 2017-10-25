@@ -46,6 +46,7 @@ def startRecording(model):
         directory = filePath.rsplit('/', 1)[0]+'/'
         if not os.path.exists(directory):
             os.makedirs(directory)
+        if model in recording: return
         with open(filePath, 'wb') as f:
             recording.append(model)
             while model in wanted:
@@ -69,8 +70,7 @@ def startRecording(model):
                 os.rename(filePath, finishedDir+'/'+filePath.rsplit['/',1][0])
     except: pass
     finally:
-        if model in recording:
-            recording.remove(model)
+        recording.remove(model)
 def postProcess():
     global processingQueue
     global postProcessingCommand
