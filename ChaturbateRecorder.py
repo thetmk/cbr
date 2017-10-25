@@ -56,18 +56,17 @@ def startRecording(model):
                 except:
                     f.close()
                     break
-            recording.remove(model)
-            if postProcessingCommand != "":
-                processingQueue.put({'model':model, 'path':filePath, 'gender':gender})
-            elif completed_directory != "":
-                finishedDir = completed_directory.format(path=save_directory, model=model,
-                            gender=gender, seconds=now.strftime("%S"),
-                            minutes=now.strftime("%M"),hour=now.strftime("%H"), day=now.strftime("%d"),
-                            month=now.strftime("%m"), year=now.strftime("%Y"))
+        if postProcessingCommand:
+            processingQueue.put({'model':model, 'path':filePath, 'gender':gender})
+        elif completed_directory:
+            finishedDir = completed_directory.format(path=save_directory, model=model,
+                        gender=gender, seconds=now.strftime("%S"),
+                        minutes=now.strftime("%M"),hour=now.strftime("%H"), day=now.strftime("%d"),
+                        month=now.strftime("%m"), year=now.strftime("%Y"))
 
-                if not os.path.exists(finishedDir):
-                    os.makedirs(finishedDir)
-                os.rename(filePath, finishedDir+'/'+filePath.rsplit['/',1][0])
+            if not os.path.exists(finishedDir):
+                os.makedirs(finishedDir)
+            os.rename(filePath, finishedDir+'/'+filePath.rsplit['/',1][0])
     except: pass
     finally:
         recording.remove(model)
@@ -102,7 +101,7 @@ def getOnlineModels():
                 result = json.loads(result)
                 length = len(result['rooms'])
                 data['key'] = result['key']
-                online.extend([m['username'] for m in result['rooms']])
+                online.extend([m['username'].lower() for m in result['rooms']])
         except json.decoder.JSONDecodeError:
             break
         except requests.exceptions.ConnectionError:pass
