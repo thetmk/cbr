@@ -69,7 +69,7 @@ def startRecording(model):
             os.rename(filePath, finishedDir+'/'+filePath.rsplit['/',1][0])
     except: pass
     finally:
-        recording.remove(model)
+        if model in recording:recording.remove(model)
 def postProcess():
     global processingQueue
     global postProcessingCommand
