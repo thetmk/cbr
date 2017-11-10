@@ -56,10 +56,12 @@ def getModels():
         models = LIST.find_all('div', {'class': 'title'})
         for model in models:
             followed.append(model.find_all('a', href=True)[0].string.lower()[1:])
-        if int(soup.findAll('li', {'class': 'active'})[1].string) >= int(soup.findAll('a', {'class': 'endless_page_link'})[-2].string):
-            break
-        else:
-            page += 1
+        try:
+            if int(soup.findAll('li', {'class': 'active'})[1].string) >= int(soup.findAll('a', {'class': 'endless_page_link'})[-2].string):
+                break
+            else:
+                page += 1
+        except IndexError: break
 
 
 if __name__ == '__main__':
@@ -72,13 +74,15 @@ if __name__ == '__main__':
     if not checkLogin(result):
         login()
     getModels()
-    print(len(followed))
+    print('{} followed models'.format(len(set(followed))))
     f = open(wishlist, 'r')
     wanted = list(set(f.readlines()))
     wanted = [m.strip('\n').split('chaturbate.com/')[-1].lower().strip().replace('/', '') for m in wanted]
+    print('{} models currently in the wanted list'.format(len(wanted)))
     followed.extend(wanted)
     f= open(wishlist, 'w')
-    for model in list(set(followed)):
+    for model in set(followed):
         f.write(model + '\n')
+    print('{} models have been added to the wanted list'.format(len(set(followed)) - len(set(wanted))))
     with open (sys.path[0] + "/" +username + '.pickle', 'wb') as f:
         pickle.dump(s, f)
