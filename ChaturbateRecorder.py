@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*- 
 import time, datetime, os, sys, requests, configparser, re, subprocess
 if os.name == 'nt':
     import ctypes
@@ -31,7 +33,7 @@ def startRecording(model):
     global postProcessingCommand
     global processingQueue
     try:
-        result = requests.get('https://chaturbate.com/api/chatvideocontext/{}/'.format(model)).json()
+        result = requests.get('https://chaturbate.com/api/chatvideocontext/{}/'.format(model), timeout=(6.05, 27)).json()
         session = Livestreamer()
         session.set_option('http-headers', "referer=https://www.chaturbate.com/{}".format(model))
         streams = session.streams("hlsvariant://{}".format(result['hls_source'].rsplit('?')[0]))
@@ -89,19 +91,23 @@ def getOnlineModels():
     global wanted
     for gender in genders:
         try:
+            foo = 1
             data = {'categories': gender, 'num': 127}
-            result = requests.post("https://roomlister.stream.highwebmedia.com/session/start/", data=data).json()
+            result = requests.post("https://roomlister.stream.highwebmedia.com/session/start/", data=data, timeout=(6.05, 27)).json()
             length = len(result['rooms'])
             online.extend([m['username'].lower() for m in result['rooms']])
             data['key'] = result['key']
             while length == 127:
-                result = requests.post("https://roomlister.stream.highwebmedia.com/session/next/", data=data).json()
+                if foo > 6:
+                    break
+                foo = foo+1
+                result = requests.post("https://roomlister.stream.highwebmedia.com/session/next/", data=data, timeout=(6.05, 27)).json()
                 length = len(result['rooms'])
                 data['key'] = result['key']
                 online.extend([m['username'].lower() for m in result['rooms']])
         except:
             break
-    f = open(wishlist, 'r')
+    f = open(wishlist, 'r', errors='ignore')
     wanted =  list(set(f.readlines()))
     wanted = [m.strip('\n').split('chaturbate.com/')[-1].lower().strip().replace('/', '') for m in wanted]
     #wantedModels = list(set(wanted).intersection(online).difference(recording))
