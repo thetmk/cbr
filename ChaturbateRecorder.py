@@ -91,16 +91,12 @@ def getOnlineModels():
     global wanted
     for gender in genders:
         try:
-            foo = 1
             data = {'categories': gender, 'num': 127}
             result = requests.post("https://roomlister.stream.highwebmedia.com/session/start/", data=data, timeout=(6.05, 27)).json()
             length = len(result['rooms'])
             online.extend([m['username'].lower() for m in result['rooms']])
             data['key'] = result['key']
             while length == 127:
-                if foo > 6:
-                    break
-                foo = foo+1
                 result = requests.post("https://roomlister.stream.highwebmedia.com/session/next/", data=data, timeout=(6.05, 27)).json()
                 length = len(result['rooms'])
                 data['key'] = result['key']
