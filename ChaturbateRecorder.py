@@ -89,43 +89,31 @@ def postProcess():
 def getOnlineModels():
     online = []
     global wanted
-#    for gender in genders:
-    if True:
-        try:
-            #data = {'categories': gender, 'num': 127}
-            data = {'categories': 'f,m,t,c', 'num': 0}
-            result = requests.post("https://roomlister.stream.highwebmedia.com/session/start/", data=data, timeout=(6.05, 15)).json()
-            length = len(result['rooms'])
-            if length > 0:
-                online.extend([m['username'].lower() for m in result['rooms']])
-            data['key'] = result['key']
-#            while length == 127:
-#                result = requests.post("https://roomlister.stream.highwebmedia.com/session/next/", data=data, timeout=(6.05, 27)).json()
-#                length = len(result['rooms'])
-#                data['key'] = result['key']
-#                online.extend([m['username'].lower() for m in result['rooms']])
-        except:
-            pass
-            #break
+    try:
+        data = {'categories': ','.join(genders), 'num': 0}
+        result = requests.post("https://roomlister.stream.highwebmedia.com/session/start/", data=data, timeout=(6.05, 15)).json()
+        length = len(result['rooms'])
+        if length > 0:
+            online.extend([m['username'].lower() for m in result['rooms']])
+        data['key'] = result['key']
+    except:
+        pass
     f = open(wishlist, 'r', errors='ignore')
-    wanted =  list(set(f.readlines()))
+    wanted = list(set(f.readlines()))
     wanted = [m.strip('\n').split('chaturbate.com/')[-1].lower().strip().replace('/', '') for m in wanted]
-    #wantedModels = list(set(wanted).intersection(online).difference(recording))
-    '''new method for building list - testing issue #19 yet again'''
     wantedModels = [m for m in (list(set(wanted))) if m in online and m not in recording]
     for theModel in wantedModels:
-            thread = Thread(target=startRecording, args=(theModel,))
-            thread.start()
+        thread = Thread(target=startRecording, args=(theModel,))
+        thread.start()
     f.close()
 
 
 if __name__ == '__main__':
-    #AllowedGenders = ['female', 'male', 'trans', 'couple']
-    #AllowedGenders = ['f', 'm', 't', 'c']
-    #for gender in genders:
-    #    if gender.lower() not in AllowedGenders:
-    #        print(gender, "is not an acceptable gender, options are: female, male, trans, and couple - please correct your config file")
-    #        exit()
+    AllowedGenders = ['female', 'male', 'trans', 'couple', 'f', 'm', 't', 'c']
+    for gender in genders:
+        if gender.lower() not in AllowedGenders:
+            print(gender, "is not an acceptable gender, options are: female, f, male, m, trans, t, couple anc c - please correct your config file")
+            exit()
     genders = [a.lower()[0] for a in genders]
     print()
     if postProcessingCommand != "":
